@@ -2,11 +2,8 @@ import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_startup_namer/saved_words.dart';
 import 'package:flutter_startup_namer/services/connectivity_service.dart';
-
-enum TextTransformation {
-  UPPERCASE,
-  NONE
-}
+import 'package:flutter_startup_namer/state/name.dart';
+import 'package:get/get.dart';
 
 class RandomWords extends StatefulWidget {
   final ConnectivityService _connectivityService;
@@ -21,10 +18,9 @@ class RandomWords extends StatefulWidget {
 
 class _RandomWordsState extends State<RandomWords> {
   final ConnectivityService _connectivityService;
+  final _sharedState = Get.put(NameState(), permanent: true);
 
   final List<WordPair> _suggestions = <WordPair>[];
-  final Set<WordPair> _saved = Set<WordPair>();
-  TextTransformation _transformation = TextTransformation.NONE;
   ConnectivityStatus _connectivityStatus;
 
   _RandomWordsState(ConnectivityService connectivityService)
@@ -42,7 +38,7 @@ class _RandomWordsState extends State<RandomWords> {
           IconButton(icon: Icon(Icons.list), onPressed: _pushSaved,),
           IconButton(icon: Icon(Icons.network_cell), onPressed: () => _checkConnection(),)
         ],
-        backgroundColor: _connectivityService.status.color,
+        backgroundColor: _connectivityStatus.color,
       ),
       body: _buildSuggestions(),
     );
@@ -60,50 +56,54 @@ class _RandomWordsState extends State<RandomWords> {
         if (index >= _suggestions.length) {
           _suggestions.addAll(generateWordPairs().take(10));
         }
-        return _buildRow(_suggestions[index]);
+        return _buildRow(_suggestions[index], _sharedState.transformation, _sharedState.saved);
       },
     );
   }
 
-  Widget _buildRow(WordPair pair) {
-    final isSaved = _saved.contains(pair);
-    return ListTile(
+  Widget _buildRow(WordPair pair, Rx<TextTransformation> transformation, RxSet<WordPair> saved) {
+    return Obx(() {
+      final isSaved = saved.contains(pair);
+      return ListTile(
         title: Text(
-            pair.transformed(_transformation)
+            pair.transformed(transformation.value)
         ),
         trailing: Icon(
             isSaved ? Icons.favorite : Icons.favorite_border,
             color: isSaved ? Colors.red : null
         ),
         onTap: () {
-          setState(() {
-            if (isSaved) {
-              _saved.remove(pair);
-            } else {
-              _saved.add(pair);
-            }
-          });
+          if (isSaved) {
+            saved.update((value) {
+              saved.remove(pair);
+            });
+          } else {
+            saved.update((value) {
+              saved.add(pair);
+            });
+          }
         }
-    );
+      );
+    });
   }
 
   void _pushSaved() {
     Navigator.of(context).push(
-        SavedWordsRoute(_saved)
+        // FIXME
+        SavedWordsRoute(_sharedState.saved)
     );
   }
 
   void _toggleTextTransformation() {
-    setState(() {
-      final allCases = TextTransformation.values;
-      final nextIndex = (allCases.indexOf(_transformation) + 1) % allCases.length;
-      _transformation = allCases[nextIndex];
-    });
+    final allCases = TextTransformation.values;
+    final transformation = _sharedState.transformation;
+    final nextIndex = (allCases.indexOf(transformation.value) + 1) % allCases.length;
+    transformation.value = allCases[nextIndex];
   }
 
   void _checkConnection() {
-    _connectivityService.checkConnection(
-            (status) => setState(() {
+    _connectivityService.checkConnection((status) =>
+        setState(() {
           _connectivityStatus = status;
         })
     );
