@@ -5,7 +5,7 @@ enum ConnectivityStatus {
   DISCONNECTED, CONNECTED
 }
 
-class ConnectivityService {
+class ConnectivityService extends GetxService {
   var status = ConnectivityStatus.CONNECTED.obs;
 
   void checkConnection() {

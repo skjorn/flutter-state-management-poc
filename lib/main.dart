@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_startup_namer/random_words.dart';
 import 'package:flutter_startup_namer/services/connectivity_service.dart';
+import 'package:flutter_startup_namer/services/name_data_service.dart';
 import 'package:get/get.dart';
 
 void main() {
-  Get.put(ConnectivityService(), permanent: true);
+  Get.put(ConnectivityService());
+  Get.create(() => NameDataService());
   runApp(MyApp());
 }
 

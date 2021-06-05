@@ -2,6 +2,7 @@ import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_startup_namer/saved_words.dart';
 import 'package:flutter_startup_namer/services/connectivity_service.dart';
+import 'package:flutter_startup_namer/services/name_data_service.dart';
 import 'package:flutter_startup_namer/state/name.dart';
 import 'package:get/get.dart';
 
@@ -20,7 +21,14 @@ class RandomWords extends StatelessWidget {
   /// Services should also use reactive streams for their state.
   final ConnectivityService _connectivityService = Get.find();
 
-  final List<WordPair> _suggestions = <WordPair>[];
+  /// Data services are accessed the same way as other services. Usage is the same.
+  /// The difference is in initialization and purpose.
+  /// They are created outside by a factory every time they are queried by Get.find(),
+  /// which is what we want. Of course, it is assumed that instances of the same
+  /// data service are backed by the same storage and are synchronized properly
+  /// for concurrent access. External init allows mocks to be injected for testing.
+  /// Init by factory gives advantage of retaining the resources only when needed.
+  final NameDataService _dataService = Get.find();
 
   @override
   Widget build(BuildContext context) {
@@ -51,10 +59,7 @@ class RandomWords extends StatelessWidget {
         }
 
         final index = i ~/ 2;
-        if (index >= _suggestions.length) {
-          _suggestions.addAll(generateWordPairs().take(10));
-        }
-        return _buildRow(_suggestions[index], _sharedState.transformation, _sharedState.saved);
+        return _buildRow(_dataService.suggestionAt(index), _sharedState.transformation, _sharedState.saved);
       },
     );
   }
