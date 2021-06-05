@@ -18,6 +18,13 @@ class RandomWords extends StatefulWidget {
 
 class _RandomWordsState extends State<RandomWords> {
   final ConnectivityService _connectivityService;
+
+  /// We'll use GetX library for shared state, like this.
+  /// State will not be a global object of all possible states, but rather scoped
+  /// into chunks of arbitrary granularity, which are isolated, see folder 'state'.
+  /// Generally speaking, every larger hierarchy of widgets will have its own State.
+  /// We'll use 'tags' parameter for widgets that are used in multiple places
+  /// to avoid collisions.
   final _sharedState = Get.put(NameState(), permanent: true);
 
   final List<WordPair> _suggestions = <WordPair>[];
@@ -61,6 +68,11 @@ class _RandomWordsState extends State<RandomWords> {
     );
   }
 
+  /// It's ok (and even more transparent) to send reactive streams rather than
+  /// the whole state down the hierarchy. It's a preferred way within, let's say,
+  /// one screen or a complex part of a screen.
+  /// (So Main widget/Route fetches the state via GetX and passes down reactive
+  /// streams via params to children.)
   Widget _buildRow(WordPair pair, Rx<TextTransformation> transformation, RxSet<WordPair> saved) {
     return Obx(() {
       final isSaved = saved.contains(pair);
@@ -87,10 +99,10 @@ class _RandomWordsState extends State<RandomWords> {
     });
   }
 
+  /// Note: Routing is out of scope of this example app.
   void _pushSaved() {
     Navigator.of(context).push(
-        // FIXME
-        SavedWordsRoute(_sharedState.saved)
+        SavedWordsRoute()
     );
   }
 
