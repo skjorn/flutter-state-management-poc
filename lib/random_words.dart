@@ -24,19 +24,21 @@ class RandomWords extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() =>
-      Scaffold(
-        appBar: AppBar(
-          title: const Text('Startup Name Generator'),
-          leading: IconButton(icon: Icon(Icons.swap_vert), onPressed: _toggleTextTransformation,),
-          actions: [
-            IconButton(icon: Icon(Icons.list), onPressed: () => _pushSaved(context),),
-            IconButton(icon: Icon(Icons.network_cell), onPressed: () => _connectivityService.checkConnection(),)
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            const Text('Name Generator'),
+            Obx(() => Icon(_connectivityService.status.value.icon)),
           ],
-          backgroundColor: _connectivityService.status.value.color,
         ),
-        body: _buildSuggestions(),
-      )
+        leading: IconButton(icon: Icon(Icons.swap_vert), onPressed: _toggleTextTransformation,),
+        actions: [
+          IconButton(icon: Icon(Icons.list), onPressed: () => _pushSaved(context),),
+          IconButton(icon: Icon(Icons.network_cell), onPressed: () => _connectivityService.checkConnection(),)
+        ],
+      ),
+      body: _buildSuggestions(),
     );
   }
 
@@ -63,27 +65,45 @@ class RandomWords extends StatelessWidget {
   /// (So Main widget/Route fetches the state via GetX and passes down reactive
   /// streams via params to children.)
   Widget _buildRow(WordPair pair, Rx<TextTransformation> transformation, RxSet<WordPair> saved) {
+    /// Optimization: It is important to use reactive values inside Obx(), change
+    /// of which should actually cause a redraw.
+    /// Examine 'saved', for example. 'saved' changes every time any item is saved
+    /// or removed, but we don't need to redraw all rows. Only the one affected by
+    /// the change. So we derive a simple Boolean for the word pair that represents
+    /// the row and use that instead. That doesn't change as often as 'saved'.
+    /// Furthermore the toggle action shouldn't cause any change directly (only
+    /// change in state that we already listen to), so it's defined outside of Obx().
+
+    // TODO: Write a utility for convenient mapping of Rx values.
+    final isSavedStream = saved.subject.stream.map((pairs) => pairs.contains(pair));
+    final currentValue = saved.contains(pair);
+    final isSaved = currentValue.obs
+                    // There's a flag 'firstRebuild' inside the Rx object, which forces
+                    // re-emitting an event with the same value, which causes unnecessary
+                    // redraw. trigger() clears that flag, so only unique values are
+                    // truly emitted.
+                    ..trigger(currentValue)
+                    ..bindStream(isSavedStream);
+
+    final toggle = () {
+      if (isSaved.value) {
+        saved.remove(pair);
+      } else {
+        saved.add(pair);
+      }
+    };
+
     return Obx(() {
-      final isSaved = saved.contains(pair);
+      print('Render row ${pair.asPascalCase}');
       return ListTile(
         title: Text(
             pair.transformed(transformation.value)
         ),
         trailing: Icon(
-            isSaved ? Icons.favorite : Icons.favorite_border,
-            color: isSaved ? Colors.red : null
+            isSaved.value ? Icons.favorite : Icons.favorite_border,
+            color: isSaved.value ? Colors.red : null
         ),
-        onTap: () {
-          if (isSaved) {
-            saved.update((value) {
-              saved.remove(pair);
-            });
-          } else {
-            saved.update((value) {
-              saved.add(pair);
-            });
-          }
-        }
+        onTap: toggle,
       );
     });
   }
@@ -115,6 +135,15 @@ extension Transformation on WordPair {
 }
 
 extension Colored on ConnectivityStatus {
+  IconData get icon {
+    switch (this) {
+      case ConnectivityStatus.DISCONNECTED:
+        return Icons.no_cell;
+      default:
+        return Icons.settings_cell;
+    }
+  }
+
   Color get color {
     switch (this) {
       case ConnectivityStatus.DISCONNECTED:
