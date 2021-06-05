@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_startup_namer/random_words.dart';
 import 'package:flutter_startup_namer/services/connectivity_service.dart';
-
-final connectivityService = ConnectivityService();
+import 'package:get/get.dart';
 
 void main() {
+  Get.put(ConnectivityService(), permanent: true);
   runApp(MyApp());
 }
 
@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
           subtitle1: TextStyle(fontSize: 18),
         ),
       ),
-      home: RandomWords(connectivityService: connectivityService,),
+      home: RandomWords(),
     );
   }
 }

@@ -5,20 +5,7 @@ import 'package:flutter_startup_namer/services/connectivity_service.dart';
 import 'package:flutter_startup_namer/state/name.dart';
 import 'package:get/get.dart';
 
-class RandomWords extends StatefulWidget {
-  final ConnectivityService _connectivityService;
-
-  const RandomWords({ Key? key, required ConnectivityService connectivityService })
-      : _connectivityService = connectivityService,
-        super(key: key);
-
-  @override
-  _RandomWordsState createState() => _RandomWordsState(_connectivityService);
-}
-
-class _RandomWordsState extends State<RandomWords> {
-  final ConnectivityService _connectivityService;
-
+class RandomWords extends StatelessWidget {
   /// We'll use GetX library for shared state, like this.
   /// State will not be a global object of all possible states, but rather scoped
   /// into chunks of arbitrary granularity, which are isolated, see folder 'state'.
@@ -27,27 +14,29 @@ class _RandomWordsState extends State<RandomWords> {
   /// to avoid collisions.
   final _sharedState = Get.put(NameState(), permanent: true);
 
-  final List<WordPair> _suggestions = <WordPair>[];
-  ConnectivityStatus _connectivityStatus;
+  /// Other services (that may contain their own state) are injected via GetX as well.
+  /// Here however, we don't create them for the first time. Instead we assume
+  /// they were already initialized by the parent code.
+  /// Services should also use reactive streams for their state.
+  final ConnectivityService _connectivityService = Get.find();
 
-  _RandomWordsState(ConnectivityService connectivityService)
-      : _connectivityService = connectivityService,
-        _connectivityStatus = connectivityService.status,
-        super();
+  final List<WordPair> _suggestions = <WordPair>[];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Startup Name Generator'),
-        leading: IconButton(icon: Icon(Icons.swap_vert), onPressed: _toggleTextTransformation,),
-        actions: [
-          IconButton(icon: Icon(Icons.list), onPressed: _pushSaved,),
-          IconButton(icon: Icon(Icons.network_cell), onPressed: () => _checkConnection(),)
-        ],
-        backgroundColor: _connectivityStatus.color,
-      ),
-      body: _buildSuggestions(),
+    return Obx(() =>
+      Scaffold(
+        appBar: AppBar(
+          title: const Text('Startup Name Generator'),
+          leading: IconButton(icon: Icon(Icons.swap_vert), onPressed: _toggleTextTransformation,),
+          actions: [
+            IconButton(icon: Icon(Icons.list), onPressed: () => _pushSaved(context),),
+            IconButton(icon: Icon(Icons.network_cell), onPressed: () => _connectivityService.checkConnection(),)
+          ],
+          backgroundColor: _connectivityService.status.value.color,
+        ),
+        body: _buildSuggestions(),
+      )
     );
   }
 
@@ -100,7 +89,7 @@ class _RandomWordsState extends State<RandomWords> {
   }
 
   /// Note: Routing is out of scope of this example app.
-  void _pushSaved() {
+  void _pushSaved(BuildContext context) {
     Navigator.of(context).push(
         SavedWordsRoute()
     );
@@ -111,14 +100,6 @@ class _RandomWordsState extends State<RandomWords> {
     final transformation = _sharedState.transformation;
     final nextIndex = (allCases.indexOf(transformation.value) + 1) % allCases.length;
     transformation.value = allCases[nextIndex];
-  }
-
-  void _checkConnection() {
-    _connectivityService.checkConnection((status) =>
-        setState(() {
-          _connectivityStatus = status;
-        })
-    );
   }
 }
 

@@ -1,15 +1,15 @@
 import 'dart:math';
+import 'package:get/get.dart';
 
 enum ConnectivityStatus {
   DISCONNECTED, CONNECTED
 }
 
 class ConnectivityService {
-  ConnectivityStatus status = ConnectivityStatus.CONNECTED;
+  var status = ConnectivityStatus.CONNECTED.obs;
 
-  void checkConnection(Function(ConnectivityStatus)? callback) {
+  void checkConnection() {
     var index = Random().nextInt(ConnectivityStatus.values.length);
-    status = ConnectivityStatus.values[index];
-    callback?.call(status);
+    status.value = ConnectivityStatus.values[index];
   }
 }
