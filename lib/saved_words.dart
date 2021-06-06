@@ -11,9 +11,7 @@ MaterialPageRoute<void> SavedWordsRoute() {
       /// coupling between screens.
       final _sharedState = Get.put(NameState(), permanent: true);
       final items = _sharedState.saved.map((WordPair pair) {
-          return ListTile(
-            title: Text(pair.asPascalCase),
-          );
+          return _ListItem(pair);
       });
 
       final divided = ListTile
@@ -32,4 +30,35 @@ MaterialPageRoute<void> SavedWordsRoute() {
     },
     fullscreenDialog: true,
   );
+}
+
+// List Item
+
+/// Ephemeral state -- we don't need it with what have been established.
+/// But for quick, dirty, local prototyping it's tolerated.
+/// (Although honestly, it's actually more code!)
+class _ListItem extends StatefulWidget {
+  final WordPair _wordPair;
+
+  _ListItem(this._wordPair);
+
+  @override
+  _ListItemState createState() => _ListItemState(_wordPair);
+}
+
+class _ListItemState extends State<_ListItem> {
+  final WordPair _wordPair;
+
+  var _isImportant = false;
+
+  _ListItemState(this._wordPair);
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(_wordPair.asPascalCase),
+      trailing: _isImportant ? Icon(Icons.error_outline) : null,
+      onTap: () => setState(() => _isImportant = !_isImportant),
+    );
+  }
 }
